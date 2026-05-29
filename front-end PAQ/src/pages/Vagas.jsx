@@ -1,22 +1,53 @@
+// Arquivo: Vagas.jsx
+// Propósito: página principal de listagem de vagas.
+// Seções:
+//  - importações e dependências
+//  - estado local (vagas, loading, erro, paginação, pesquisa)
+//  - efeitos para carregar dados do backend
+//  - lógica de filtragem e paginação (client-side)
+//  - renderização da grade de vagas e componentes auxiliares
 import { useEffect, useState } from 'react'
 import JobCard from '../components/JobCard'
+import Pagination from '../components/Pagination'
+import SearchInput from '../components/SearchInput'
 import { getVagas } from '../services/vagasApi'
-import AiChat from '../container/AiChat'
 
 function Vagas() {
+  // Estado: dados trazidos da API
   const [vagas, setVagas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Estado: paginação e pesquisa locais
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const itemsPerPage = 6
-  const totalPages = Math.ceil(vagas.length / itemsPerPage)
+  const searchTermNormalizado = searchTerm.trim().toLowerCase()
 
-  const vagasDaPagina = vagas.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
+  // Filtragem client-side: procura por título, nome, empresa, local ou descrição
+  const vagasFiltradas = vagas.filter((vaga) => {
+    if (!searchTermNormalizado) return true
+
+    const textoBase = [vaga.title, vaga.name, vaga.company, vaga.location, vaga.description]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return textoBase.includes(searchTermNormalizado)
+  })
+
+  // Cálculo de páginas a partir dos resultados filtrados
+  const totalPages = Math.ceil(vagasFiltradas.length / itemsPerPage)
+  const paginaAtual = totalPages === 0 ? 1 : Math.min(currentPage, totalPages)
+
+  // Fatia os resultados para a página atual
+  const vagasDaPagina = vagasFiltradas.slice(
+    (paginaAtual - 1) * itemsPerPage,
+    paginaAtual * itemsPerPage,
   )
 
+  // Efeito: carregar vagas na montagem do componente
   useEffect(() => {
     let ativo = true
 
@@ -41,13 +72,22 @@ function Vagas() {
     }
   }, [])
 
-  if (loading) return <div>Carregando vagas...</div>
+  // Handler: atualiza o termo de pesquisa e reseta a página para 1
+  function handleSearchChange(valor) {
+    setSearchTerm(valor)
+    setCurrentPage(1)
+  }
 
+  // Renderizações simples para loading/erro
+  if (loading) return <div>Carregando vagas...</div>
   if (error) return <div>{error}</div>
 
+  // JSX: composição da página com SearchInput, grade e paginação
   return (
-    <div className="min-h-screen bg-slate-200">
-      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3 px-4 py-8">
+    <div className='min-h-screen bg-slate-200 pb-10'>
+      <SearchInput value={searchTerm} onChange={handleSearchChange} />
+
+      <div className='mx-auto grid max-w-6xl gap-4 px-4 sm:grid-cols-2 lg:grid-cols-3'>
         {vagasDaPagina.map((job) => {
           const jobId = String(job._id ?? job.id_vaga_external)
 
@@ -64,38 +104,13 @@ function Vagas() {
         })}
       </div>
 
-      <div className="mx-auto mt-8 flex max-w-6xl items-center justify-center gap-2 py-8">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          disabled={currentPage === 1}
-          className="rounded-lg bg-white px-4 py-2 transition hover:bg-slate-900 hover:text-white disabled:opacity-50 disabled:hover:bg-white"
-        >
-          Anterior
-        </button>
+      {vagasFiltradas.length === 0 && (
+        <p className='mx-auto mt-10 max-w-6xl px-4 text-center text-sm text-slate-600'>
+          Nenhuma vaga encontrada com esse filtro.
+        </p>
+      )}
 
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => setCurrentPage(page)}
-            className={`rounded-lg px-4 py-2 transition ${
-              currentPage === page
-                ? 'bg-slate-900 text-white shadow-inner'
-                : 'bg-white hover:bg-slate-500 hover:text-white'
-            }`}
-          >
-            {page}
-          </button>
-        ))}
-
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="rounded-lg bg-white px-4 py-2 transition hover:bg-slate-900 hover:text-white disabled:opacity-50 disabled:hover:bg-white"
-        >
-          Próxima
-        </button>
-      </div>
-      <AiChat/>
+      <Pagination currentPage={paginaAtual} totalPages={totalPages} onPageChange={setCurrentPage} />
     </div>
   )
 }

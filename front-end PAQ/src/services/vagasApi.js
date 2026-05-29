@@ -1,27 +1,27 @@
+// Arquivo: vagasApi.js
+// Propósito: cliente HTTP local para consumir os endpoints de vagas.
+// Contém funções utilitárias que retornam dados prontos para uso pelos componentes.
 import axios from 'axios'
-import { getDefaultStore } from 'jotai/vanilla'
-import { apiRoutesAtom } from '../store/apiRoutes'
-
-const store = getDefaultStore()
+import { apiRoutes } from '../store/apiRoutes'
 
 function createApiClient() {
-  const { baseURL } = store.get(apiRoutesAtom)
-
+  // Cria uma instância do axios com a `baseURL` centralizada.
+  // Isso facilita testes ou mudanças de ponto de entrada da API.
   return axios.create({
-    baseURL,
+    baseURL: apiRoutes.baseURL,
   })
 }
 
 export async function getVagas() {
-  const { vagasList } = store.get(apiRoutesAtom)
+  // Retorna a lista completa de vagas (o backend atual entrega tudo em uma rota).
   const api = createApiClient()
-  const response = await api.get(vagasList)
+  const response = await api.get(apiRoutes.vagasList)
   return response.data
 }
 
 export async function getVagaById(id) {
-  const { vagaByIdBase } = store.get(apiRoutesAtom)
+  // Retorna os detalhes de uma vaga específica a partir do identificador.
   const api = createApiClient()
-  const response = await api.get(`${vagaByIdBase}/${id}`)
+  const response = await api.get(`${apiRoutes.vagaByIdBase}/${id}`)
   return response.data
 }
